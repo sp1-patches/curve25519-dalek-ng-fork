@@ -93,6 +93,7 @@
 #![allow(non_snake_case)]
 
 use core::borrow::Borrow;
+use core::convert::TryInto;
 use core::fmt::Debug;
 use core::iter::Iterator;
 use core::iter::Sum;
