@@ -219,12 +219,21 @@ impl CompressedEdwardsY {
         self.0
     }
 
-    #[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
     /// Attempt to decompress to an `EdwardsPoint`.
     ///
     /// Returns `None` if the input is not the \\(y\\)-coordinate of a
     /// curve point.
     pub fn decompress(&self) -> Option<EdwardsPoint> {
+        #[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
+        {
+            sp1_lib::unconstrained! {
+                sp1_lib::io::write(sp1_lib::io::FD_EDDECOMPRESS, self.as_bytes()); 
+            }
+            if sp1_lib::io::read_vec().first().expect("We should have a status from the hook") == &1 {
+                return Some(self.decompress_with_syscall());
+            }
+        }
+
         let Y = FieldElement::from_bytes(self.as_bytes());
         let Z = FieldElement::one();
         let YY = Y.square();
@@ -249,7 +258,7 @@ impl CompressedEdwardsY {
     /// curve point.
     /// 
     /// Accelerated with SP1's EdDecompress syscall.
-    pub fn decompress(&self) -> Option<EdwardsPoint> {
+    fn decompress_with_syscall(&self) -> Option<EdwardsPoint> {
         let mut XY_bytes = [0_u8; 64];
         XY_bytes[32..].copy_from_slice(self.as_bytes());
         unsafe {
