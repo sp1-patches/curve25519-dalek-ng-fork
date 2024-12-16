@@ -5,7 +5,10 @@ use scalar::Scalar;
 use edwards::EdwardsPoint;
 use backend::serial::curve_models::{ProjectiveNielsPoint, ProjectivePoint};
 use window::LookupTable;
+use prelude::Vec;
+use crate::constants::ED25519_BASEPOINT_POINT;
 
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 /// Perform constant-time, variable-base scalar multiplication.
 pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
     // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]
@@ -43,4 +46,17 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
         // Now tmp1 = s_i*P + 16*(prev) in P1xP1 coords
     }
     tmp1.to_extended()
+}
+
+#[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
+use sp1_lib::{ed25519::Ed25519AffinePoint, utils::AffinePoint};
+#[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
+/// Perform constant-time, variable-base scalar multiplication.
+///
+/// Accelerated with SP1's EdAdd syscall.
+#[allow(non_snake_case)]
+pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
+    let mut ed_point: Ed25519AffinePoint = (*point).into();
+    ed_point.mul_assign(&sp1_lib::utils::bytes_to_words_le(scalar.as_bytes())).expect("Scalar multiplication failed");
+    ed_point.into()
 }
