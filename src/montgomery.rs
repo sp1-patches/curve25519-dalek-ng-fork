@@ -149,6 +149,8 @@ impl MontgomeryPoint {
 
         let y = &(&u - &one) * &(&u + &one).invert();
 
+        // `y_bytes` is the result of `to_bytes`, which returns canonical form.
+        // This guarantees that the `decompress` will not fail due to canonicalness reasons.
         let mut y_bytes = y.to_bytes();
         y_bytes[31] ^= sign << 7;
 

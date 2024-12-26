@@ -150,18 +150,22 @@ cfg_if::cfg_if! {
             fn from(value: EdwardsPoint) -> Self {
                 let mut limbs = [0u32; 16];
 
+                // Invert `Z` inside an unconstrained block to normalize the point.
                 sp1_lib::unconstrained! {
                     let mut buf = value.Z.invert().to_bytes();
                     sp1_lib::io::hint_slice(&buf);
                 }
 
+                // Check that the hint is canonical, and an inverse.
                 let z_inv = read_and_verify_canon().unwrap();
                 assert!(&z_inv * &value.Z == FieldElement::one(), "The inverse of z is not correct. This is a bug.");
 
+                // Multiply by `z_inv` to normalize the point.
                 let value_x = &value.X * &z_inv;
                 let value_y = &value.Y * &z_inv;
 
                 // Convert the x and y coordinates to little endian u32 limbs.
+                // Calling `to_bytes()` guarantees canonical form.
                 for (x_limb, x_bytes) in limbs[..8]
                     .iter_mut()
                     .zip(value_x.to_bytes().chunks_exact(4))
@@ -231,6 +235,8 @@ impl CompressedEdwardsY {
     ///
     /// Returns `None` if the input is not the \\(y\\)-coordinate of a
     /// curve point.
+    /// NOTE: In the patched version, the decompress fails when the `y` coordinate is not canonical, i.e. not less than the field modulus.
+    /// In the original crate, the decompress succeeds even when the `y` coordinate is not canonical, between `2^255 - 19` and `2^255 - 1`.
     pub fn decompress(&self) -> Option<EdwardsPoint> {
         let Y = FieldElement::from_bytes(self.as_bytes());
         let Z = FieldElement::one();
@@ -285,7 +291,7 @@ impl CompressedEdwardsY {
             // This is the first assertion that the point is not decompressable.
             //
             // If the point is outside the field and has a non-canonical representation it cannot be decompressed.
-            // Here Y is created via `from_bytes` which does the reduction.
+            // Here the compressed form without the sign bit is compared with `Y`'s `as_bytes()`, which returns the canonical form.
             //
             // Note: This deviates from the original implentation, which didnt require canon
             // inputs.
@@ -306,10 +312,13 @@ impl CompressedEdwardsY {
             //
             // we check that by confirming that the hinted root satisfies 
             // hinted_root * hinted_root = NQR * u_div_v
+            // We additionally check that `hinted_root` is non-zero to handle zero.
             
+            // v_inv is checked to be canonical and a correct inverse.
             let v_inv = read_and_verify_canon().unwrap();
             assert!(&v_inv * &v == FieldElement::one(), "The inverse of v is not correct. This is a bug.");
 
+            // hinted_root is checked to be canonical and non-zero.
             let hinted_root = read_and_verify_canon().unwrap();
             assert!(hinted_root != FieldElement::zero(), "0 is a quadratic residue");
             
@@ -362,6 +371,8 @@ fn read_and_verify_canon() -> Option<FieldElement> {
     
     let fe = FieldElement::from_bytes(&raw_bytes);
 
+    // Check that the read hint is canonical. 
+    // Compare the hint with the result of `to_bytes`, which returns canonical form.
     if fe.to_bytes() != raw_bytes {
         return None;
     }
