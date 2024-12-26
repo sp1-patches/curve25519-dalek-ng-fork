@@ -150,19 +150,27 @@ cfg_if::cfg_if! {
             fn from(value: EdwardsPoint) -> Self {
                 let mut limbs = [0u32; 16];
 
-                // Ensure that the point is normalized.
-                assert_eq!(value.Z, FieldElement::one());
+                sp1_lib::unconstrained! {
+                    let mut buf = value.Z.invert().to_bytes();
+                    sp1_lib::io::hint_slice(&buf);
+                }
+
+                let z_inv = read_and_verify_canon().unwrap();
+                assert!(&z_inv * &value.Z == FieldElement::one(), "The inverse of z is not correct. This is a bug.");
+
+                let value_x = &value.X * &z_inv;
+                let value_y = &value.Y * &z_inv;
 
                 // Convert the x and y coordinates to little endian u32 limbs.
                 for (x_limb, x_bytes) in limbs[..8]
                     .iter_mut()
-                    .zip(value.X.to_bytes().chunks_exact(4))
+                    .zip(value_x.to_bytes().chunks_exact(4))
                 {
                     *x_limb = u32::from_le_bytes(x_bytes.try_into().unwrap());
                 }
                 for (y_limb, y_bytes) in limbs[8..]
                     .iter_mut()
-                    .zip(value.Y.to_bytes().chunks_exact(4))
+                    .zip(value_y.to_bytes().chunks_exact(4))
                 {
                     *y_limb = u32::from_le_bytes(y_bytes.try_into().unwrap());
                 }
@@ -300,9 +308,10 @@ impl CompressedEdwardsY {
             // hinted_root * hinted_root = NQR * u_div_v
             
             let v_inv = read_and_verify_canon().unwrap();
-            assert!(&v_inv * &v == FieldElement::ONE, "The inverse of v is not correct. This is a bug.");
+            assert!(&v_inv * &v == FieldElement::one(), "The inverse of v is not correct. This is a bug.");
 
             let hinted_root = read_and_verify_canon().unwrap();
+            assert!(hinted_root != FieldElement::zero(), "0 is a quadratic residue");
             
             // Constrain `hinted_root * hinted_root = NQR * u_div_v`
             assert_eq!(hinted_root.square(), &(&nqr * &u) * &v_inv, "The hinted root does not satisfy the NQR check. This is a bug.");
@@ -329,7 +338,7 @@ impl CompressedEdwardsY {
     /// curve point.
     /// 
     /// Accelerated with SP1's EdDecompress syscall.
-    fn decompress_with_syscall(&self) -> Option<EdwardsPoint> {
+    fn decompress_with_syscall(&self) -> EdwardsPoint {
         let mut XY_bytes = [0_u8; 64];
         XY_bytes[32..].copy_from_slice(self.as_bytes());
         unsafe {
@@ -338,12 +347,12 @@ impl CompressedEdwardsY {
         let X = FieldElement::from_bytes(&XY_bytes[0..32].try_into().unwrap());
         let Y = FieldElement::from_bytes(&XY_bytes[32..].try_into().unwrap());
         let Z = FieldElement::one();
-        return Some(EdwardsPoint {
+        return EdwardsPoint {
             X,
             Y,
             Z,
             T: &X * &Y,
-        });
+        };
     }
 }
 
