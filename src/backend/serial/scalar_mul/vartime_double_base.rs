@@ -84,7 +84,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
         A,
         &b_bits,
         ED25519_BASEPOINT_POINT.into(),
-    )
-    .unwrap();
+    );
     res.into()
 }

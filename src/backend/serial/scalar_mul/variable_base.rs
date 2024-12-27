@@ -57,6 +57,6 @@ use sp1_lib::{ed25519::Ed25519AffinePoint, utils::AffinePoint};
 #[allow(non_snake_case)]
 pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
     let mut ed_point: Ed25519AffinePoint = (*point).into();
-    ed_point.mul_assign(&sp1_lib::utils::bytes_to_words_le(scalar.as_bytes())).expect("Scalar multiplication failed");
+    ed_point.mul_assign(&sp1_lib::utils::bytes_to_words_le(scalar.as_bytes()));
     ed_point.into()
 }
