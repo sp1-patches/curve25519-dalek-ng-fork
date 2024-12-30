@@ -32,24 +32,24 @@ use subtle::ConstantTimeEq;
 use constants;
 use backend;
 
-#[cfg(feature = "u64_backend")]
+#[cfg(all(feature = "u64_backend", not(target_os = "zkvm")))]
 pub use backend::serial::u64::field::*;
 /// A `FieldElement` represents an element of the field
 /// \\( \mathbb Z / (2\^{255} - 19)\\).
 ///
 /// The `FieldElement` type is an alias for one of the platform-specific
 /// implementations.
-#[cfg(feature = "u64_backend")]
+#[cfg(all(feature = "u64_backend", not(target_os = "zkvm")))]
 pub type FieldElement = backend::serial::u64::field::FieldElement51;
 
-#[cfg(feature = "u32_backend")]
+#[cfg(any(feature = "u32_backend", target_os = "zkvm"))]
 pub use backend::serial::u32::field::*;
 /// A `FieldElement` represents an element of the field
 /// \\( \mathbb Z / (2\^{255} - 19)\\).
 ///
 /// The `FieldElement` type is an alias for one of the platform-specific
 /// implementations.
-#[cfg(feature = "u32_backend")]
+#[cfg(any(feature = "u32_backend", target_os = "zkvm"))]
 pub type FieldElement = backend::serial::u32::field::FieldElement2625;
 
 impl Eq for FieldElement {}

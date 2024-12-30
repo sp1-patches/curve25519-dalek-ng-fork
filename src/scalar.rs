@@ -169,14 +169,14 @@ use constants;
 ///
 /// This is a type alias for one of the scalar types in the `backend`
 /// module.
-#[cfg(feature = "u64_backend")]
+#[cfg(all(feature = "u64_backend", not(target_os = "zkvm")))]
 type UnpackedScalar = backend::serial::u64::scalar::Scalar52;
 
 /// An `UnpackedScalar` represents an element of the field GF(l), optimized for speed.
 ///
 /// This is a type alias for one of the scalar types in the `backend`
 /// module.
-#[cfg(feature = "u32_backend")]
+#[cfg(any(feature = "u32_backend", target_os = "zkvm"))]
 type UnpackedScalar = backend::serial::u32::scalar::Scalar29;
 
 

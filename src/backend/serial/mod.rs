@@ -28,10 +28,10 @@ compile_error!(
      please enable one of: u32_backend, u64_backend"
 );
 
-#[cfg(feature = "u32_backend")]
+#[cfg(any(feature = "u32_backend", target_os = "zkvm"))]
 pub mod u32;
 
-#[cfg(feature = "u64_backend")]
+#[cfg(all(feature = "u64_backend", not(target_os = "zkvm")))]
 pub mod u64;
 
 pub mod curve_models;

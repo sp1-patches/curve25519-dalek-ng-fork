@@ -33,9 +33,9 @@ use ristretto::CompressedRistretto;
 use montgomery::MontgomeryPoint;
 use scalar::Scalar;
 
-#[cfg(feature = "u64_backend")]
+#[cfg(all(feature = "u64_backend", not(target_os = "zkvm")))]
 pub use backend::serial::u64::constants::*;
-#[cfg(feature = "u32_backend")]
+#[cfg(any(feature = "u32_backend", target_os = "zkvm"))]
 pub use backend::serial::u32::constants::*;
 
 /// The Ed25519 basepoint, in `CompressedEdwardsY` format.
