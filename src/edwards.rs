@@ -100,6 +100,9 @@ use core::ops::{Add, Neg, Sub};
 use core::ops::{AddAssign, SubAssign};
 use core::ops::{Mul, MulAssign};
 
+#[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
+use core::convert::TryInto;
+
 use subtle::Choice;
 use subtle::ConditionallyNegatable;
 use subtle::ConditionallySelectable;
@@ -143,7 +146,10 @@ use backend::vector::scalar_mul;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
 mod conversions {
-use sp1_lib::{ed25519::Ed25519AffinePoint, utils::AffinePoint, syscall_ed_decompress};
+    use sp1_lib::{ed25519::Ed25519AffinePoint, utils::AffinePoint};
+    use super::read_and_verify_canon;
+    use super::EdwardsPoint;
+    use super::FieldElement;
     use core::convert::TryInto;
 
     impl From<EdwardsPoint> for Ed25519AffinePoint {
@@ -350,7 +356,7 @@ impl CompressedEdwardsY {
         let mut XY_bytes = [0_u8; 64];
         XY_bytes[32..].copy_from_slice(self.as_bytes());
         unsafe {
-            syscall_ed_decompress(&mut XY_bytes);
+            sp1_lib::syscall_ed_decompress(&mut XY_bytes);
         }
         let X = FieldElement::from_bytes(&XY_bytes[0..32].try_into().unwrap());
         let Y = FieldElement::from_bytes(&XY_bytes[32..].try_into().unwrap());
